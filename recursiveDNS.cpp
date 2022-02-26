@@ -2,11 +2,36 @@
 //
 
 #include "pch.h"
-#include <iostream>
 
-int main()
+int main(int argc, char** argv)
 {
-    std::cout << "Hello World!\n";
+    //if incorrect # of cli
+    if (argc != 3) {
+        printf("Usage: ./recursiveDNS <lookup addr> <dns server>\n");
+        exit(-1);
+    }
+
+    //Decide Query Type
+
+    //if IP Query type PTR
+
+    //if host Query type A
+
+    //Query Constructor
+
+    //UDP Sender and Reciever
+
+    //Response Parsing
+
+    //User Output
+
+    printf("%-10s: %-15s\n", "Lookup", argv[1]);
+    printf("%-10s: %-15s\n", "Query", "put query info here");
+    printf("%-10s: %-15s\n", "Server", argv[2]);
+    printf("***********************************\n");
+    printf("Connection attempts (timeout 10,000 ms");
+    printf("Parsed / legible response");
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
