@@ -56,15 +56,6 @@ void winsock::makeDNSQuestion(char* buf, cStringSpan host) {
 	}
 	buf[bufpos] = 0;
 	
-	/*int curr = 0;
-	while (curr < host.length) {
-		u_short sizeOfNextWord = getNextWord(host.string + curr);
-		buf[curr++] = (char)sizeOfNextWord;
-		memcpy(buf + curr, host.string + curr - 1, sizeOfNextWord);
-		curr += sizeOfNextWord;
-	}
-	buf[curr] = (char)0x0;
-	*/
 	return;
 }
 
