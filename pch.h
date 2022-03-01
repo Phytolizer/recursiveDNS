@@ -11,5 +11,6 @@
 #include <iostream>
 #include <Windows.h>
 #include <string.h>
+#include <process.h>
 
 #endif //PCH_H

@@ -2,6 +2,7 @@
 //
 
 #include "pch.h"
+#include "winsock.h"
 
 int main(int argc, char** argv)
 {
@@ -11,6 +12,11 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
+    winsock w;
+    cStringSpan host(argv[1]);
+    cStringSpan dns(argv[2]);
+    w.winsock_download(host, dns);
+
     //Decide Query Type
 
     //if IP Query type PTR
@@ -18,19 +24,22 @@ int main(int argc, char** argv)
     //if host Query type A
 
     //Query Constructor
-
+   
+    //char a[] = { (char)3, 'w', 'w', 'w', (char)6, 'g', 'o', 'o','g', 'l', 'e', (char)3, 'c','o','m', '\0'};
+    //printf("test: %s\n", a);
+    
     //UDP Sender and Reciever
 
     //Response Parsing
 
     //User Output
 
-    printf("%-10s: %-15s\n", "Lookup", argv[1]);
+    printf("%-10s: %-15s\n", "Lookup", host.string);
     printf("%-10s: %-15s\n", "Query", "put query info here");
-    printf("%-10s: %-15s\n", "Server", argv[2]);
+    printf("%-10s: %-15s\n", "Server", dns.string);
     printf("***********************************\n");
-    printf("Connection attempts (timeout 10,000 ms");
-    printf("Parsed / legible response");
+    printf("Connection attempts (timeout 10,000 ms)\n");
+    printf("Parsed / legible response\n");
 
 }
 
