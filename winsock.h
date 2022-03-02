@@ -42,4 +42,5 @@ struct winsock {
 	void makeDNSQuestion(char*, cStringSpan);
 	u_short getNextWord(char*, int);
 	cStringSpan readSock(SOCKET);
+	cStringSpan formatIP(cStringSpan);
 };

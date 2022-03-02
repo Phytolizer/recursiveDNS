@@ -18,7 +18,9 @@ int main(int argc, char** argv)
     w.winsock_download(host, dns);
 
     //Decide Query Type
-
+    //www.google.com
+    //142.251.46.132
+    // 
     //if IP Query type PTR
 
     //if host Query type A

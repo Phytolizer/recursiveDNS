@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "winsock.h"
+#include <vector>
 
 cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	WSADATA wsaData;
@@ -11,9 +12,16 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		return cStringSpan(nullptr, 0);
 	}
 
+	//determine query type (forward or reverse)
+	DWORD IP = inet_addr(host.string);
+	bool forward = IP == INADDR_NONE;
+	if (!forward)
+		host = formatIP(host);
+
 	//format a dns question for the socket
 	char packet[MAX_DNS_SIZE] = {};
-	int packetSize = host.length + 2 + sizeof(FixedDNSHeader) + sizeof(QueryHeader);
+	int packetSize;
+	packetSize = host.length + 2 + sizeof(FixedDNSHeader) + sizeof(QueryHeader);
 
 	//fixed field initialization
 	FixedDNSHeader *dh = (FixedDNSHeader*)packet;
@@ -35,7 +43,10 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	dh->nAuthority = 0;
 	dh->nAdditional = 0;
 	//qh fields
-	qh->type = htons(1); //requesting ipv4
+	if (forward)
+		qh->type = htons(DNS_A); //requesting ipv4
+	else
+		qh->type = htons(DNS_PTR); //requesting reverse
 	qh->qClass = htons(1); //internet
 	makeDNSQuestion((char*)(dh+1), host);
 	//printf("DNSQ: %s\n", (char*)dh + 1);
@@ -104,4 +115,32 @@ u_short winsock::getNextWord(char* buf, int amtLeft) {
 	else {
 		return amtLeft;
 	}
+}
+
+cStringSpan winsock::formatIP(cStringSpan host) {
+	char del = '.';
+	std::vector<char*> delLoc;
+	char* newStr = new char[host.length + 13];
+	for (int i = 0; i < host.length; i++) {
+		if (host.string[i] == del) {
+			delLoc.push_back(&host.string[i]);
+		}
+	}
+	int curr = 0;
+	for (auto it = delLoc.rbegin(); it != delLoc.rend(); it++) {
+		int offset = 1;
+		while (((*it)[offset] != '.') && ((*it)[offset] != '\0')) {
+			newStr[curr] = (*it)[offset];
+			curr++;
+			offset++;
+		}
+		newStr[curr] = '.';
+		curr++;
+	}
+	memcpy(newStr + curr, host.string, delLoc[0] - host.string);
+	curr += delLoc[0] - host.string;
+	memcpy(newStr + curr, ".in-addr.arpa", 14);
+	printf("formatted: %s\n", newStr);
+
+	return cStringSpan(newStr);
 }
