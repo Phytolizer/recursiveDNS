@@ -12,7 +12,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	}
 
 	//format a dns question for the socket
-	char packet[MAX_DNS_SIZE];
+	char packet[MAX_DNS_SIZE] = {};
 	int packetSize = host.length + 2 + sizeof(FixedDNSHeader) + sizeof(QueryHeader);
 
 	//fixed field initialization
@@ -20,8 +20,16 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	QueryHeader* qh = (QueryHeader*)(packet + packetSize - sizeof(QueryHeader));
 	//dh fields
 	dh->ID = (u_short)htons(_getpid());
-	//TODO: nani?
+	printf("TXID: %hu\n", dh->ID);
+	//TODO: Flag setup
+	//initialize to 0
 	dh->flags = 0;
+	//set individual bits of flags here
+	//normal query is all rest 0 -> change for reverse?
+	//set RD (recursion desired) to 1
+	dh->flags = dh->flags | (1 << 8);
+	//now reverse correctly
+	dh->flags = htons(dh->flags);
 	dh->nQuestions = htons(1);
 	dh->nAnwsers = 0;
 	dh->nAuthority = 0;
@@ -29,14 +37,40 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//qh fields
 	qh->type = htons(1); //requesting ipv4
 	qh->qClass = htons(1); //internet
-	makeDNSQuestion((char*)dh+1, host);
+	makeDNSQuestion((char*)(dh+1), host);
 	//printf("DNSQ: %s\n", (char*)dh + 1);
 
+	printf("before socket init\n");
 	//open a DNS socket here to send packet/////////////
+	char response[MAX_DNS_SIZE] = {};
+	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s == INVALID_SOCKET)
+	{
+		printf("\tsocket() generated error %d\n", WSAGetLastError());
+		WSACleanup();
+		return cStringSpan(nullptr, 0);
+	}
+	//maybe need to bind?
+	sockaddr_in dest;
+	dest.sin_family = AF_INET;
+	dest.sin_port = htons(53);
+	dest.sin_addr.S_un.S_addr = inet_addr(dnsaddr.string);
 
+	printf("before sendto \n");
+	
+	if (sendto(s, packet, packetSize, 0, (sockaddr*)&dest, sizeof(dest)) == SOCKET_ERROR) {
+		printf("\tsendto generated error %d\n", WSAGetLastError());
+		WSACleanup();
+		return cStringSpan(nullptr, 0);
+	}
+	
+	int destlen = sizeof(dest);
+	printf("before recvfrom\n");
+	int bytesRecieved = recvfrom(s, response, MAX_DNS_SIZE, 0, (sockaddr*)&dest, &destlen);
 
+	printf("Got %i bytes.\n", bytesRecieved);
 	////////////////////////////////////////////////////
-
+	
 	// call cleanup when done with everything and ready to exit program
 	WSACleanup(); 
 	return cStringSpan(nullptr, 0);

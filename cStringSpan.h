@@ -23,6 +23,5 @@ struct cStringSpan {
 			curr = string[length];
 		}
 
-		//printf("CSTRINGSPAN: %s WITH SIZE: %d", string, length);
 	}
 };

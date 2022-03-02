@@ -27,6 +27,8 @@ int main(int argc, char** argv)
    
     //char a[] = { (char)3, 'w', 'w', 'w', (char)6, 'g', 'o', 'o','g', 'l', 'e', (char)3, 'c','o','m', '\0'};
     //printf("test: %s\n", a);
+
+    //printf("%x\n", (u_short)(1 << 8));
     
     //UDP Sender and Reciever
 
