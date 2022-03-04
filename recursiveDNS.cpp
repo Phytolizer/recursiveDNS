@@ -38,13 +38,6 @@ int main(int argc, char** argv)
 
     //User Output
 
-    printf("%-10s: %-15s\n", "Lookup", host.string);
-    printf("%-10s: %-15s\n", "Query", "put query info here");
-    printf("%-10s: %-15s\n", "Server", dns.string);
-    printf("***********************************\n");
-    printf("Connection attempts (timeout 10,000 ms)\n");
-    printf("Parsed / legible response\n");
-
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

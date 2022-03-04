@@ -2,6 +2,8 @@
 #include "winsock.h"
 #include <vector>
 
+constexpr auto TIMEOUT_MS = 10000;
+
 cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	WSADATA wsaData;
 	//Initialize WinSock; once per program run
@@ -13,6 +15,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	}
 
 	//determine query type (forward or reverse)
+	printf("%-10s: %-15s\n", "Lookup", host.string);
 	DWORD IP = inet_addr(host.string);
 	bool forward = IP == INADDR_NONE;
 	if (!forward)
@@ -28,7 +31,6 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	QueryHeader* qh = (QueryHeader*)(packet + packetSize - sizeof(QueryHeader));
 	//dh fields
 	dh->ID = (u_short)htons(_getpid());
-	printf("TXID: %hu\n", dh->ID);
 	//TODO: Flag setup
 	//initialize to 0
 	dh->flags = 0;
@@ -51,7 +53,17 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	makeDNSQuestion((char*)(dh+1), host);
 	//printf("DNSQ: %s\n", (char*)dh + 1);
 
-	printf("before socket init\n");
+	//General Printout info here///////////////////////
+	int type;
+	if (forward)
+		type = DNS_A;
+	else
+		type = DNS_PTR;
+	printf("%-10s: %-15s, type %d, TXID 0x%.4X\n", "Query", host.string, type, dh->ID);
+	printf("%-10s: %-15s\n", "Server", dnsaddr.string);
+	printf("***********************************\n");
+
+
 	//open a DNS socket here to send packet/////////////
 	char response[MAX_DNS_SIZE] = {};
 	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -67,7 +79,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	dest.sin_port = htons(53);
 	dest.sin_addr.S_un.S_addr = inet_addr(dnsaddr.string);
 
-	printf("before sendto \n");
+	printf("Attempt 0 with %d bytes... ", packetSize);
 	
 	if (sendto(s, packet, packetSize, 0, (sockaddr*)&dest, sizeof(dest)) == SOCKET_ERROR) {
 		printf("\tsendto generated error %d\n", WSAGetLastError());
@@ -76,8 +88,8 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	}
 	
 	int destlen = sizeof(dest);
-	printf("before recvfrom\n");
 	int bytesRecieved = recvfrom(s, response, MAX_DNS_SIZE, 0, (sockaddr*)&dest, &destlen);
+	printf("response in %d ms with %d bytes\n", 0, bytesRecieved);
 
 	printf("Got %i bytes.\n", bytesRecieved);
 	////////////////////////////////////////////////////
@@ -106,7 +118,7 @@ void winsock::makeDNSQuestion(char* buf, cStringSpan host) {
 
 u_short winsock::getNextWord(char* buf, int amtLeft) {
 	u_short curr = 0;
-	while (buf[curr] != '.') {
+	while ((buf[curr] != '.') && (curr <amtLeft)) {
 		curr++;
 	}
 	if (curr < amtLeft) {
@@ -140,7 +152,6 @@ cStringSpan winsock::formatIP(cStringSpan host) {
 	memcpy(newStr + curr, host.string, delLoc[0] - host.string);
 	curr += delLoc[0] - host.string;
 	memcpy(newStr + curr, ".in-addr.arpa", 14);
-	printf("formatted: %s\n", newStr);
 
 	return cStringSpan(newStr);
 }
