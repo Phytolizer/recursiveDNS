@@ -43,4 +43,5 @@ struct winsock {
 	u_short getNextWord(char*, int);
 	cStringSpan readSock(SOCKET);
 	cStringSpan formatIP(cStringSpan);
+	void cleanAndExit(SOCKET);
 };
