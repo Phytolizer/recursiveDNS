@@ -132,9 +132,13 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		return cStringSpan();
 	}
 	//output questions
+	printf("\t------------ [questions] ----------\n");
 	//output anwsers
+	printf("\t------------ [anwsers] ------------\n");
 	//output authority
+	printf("\t------------ [authority] ----------\n");
 	//output additional
+	printf("\t------------ [additional] ---------\n");
 
 	// call cleanup when done with everything and ready to exit program
 	cleanAndExit(s);
