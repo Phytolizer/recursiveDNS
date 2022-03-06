@@ -81,7 +81,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	int bytesRecieved;
 	size_t begin;
 	size_t end;
-	
+
 	for (int i = 0; i < 3; i++) {
 		printf("Attempt %d with %d bytes... ", i, packetSize);
 
@@ -106,7 +106,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		cleanAndExit(s);
 		return cStringSpan();
 	}
-	printf("response in %d ms with %d bytes\n", end-begin, bytesRecieved);
+	printf("response in %d ms with %d bytes\n", end - begin, bytesRecieved);
 
 	////////////////////////////////////////////////////
 	//now parse the response by moving the header objects around onto the recieved buffer
@@ -140,7 +140,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 
 	//move curr pointer to beginning of questions section
 	char* curr = &response[sizeof(FixedDNSHeader)];
-	int count= 0;
+	int count = 0;
 	//read questions
 	for (int i = 0; i < ntohs(dh->nQuestions); i++) {
 		questions[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
@@ -170,7 +170,44 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		}
 	}
 	//read authority
+	int nAuthority = ntohs(dh->nAuthority);
+	for (int i = 0; i < nAuthority; i++) {
+		authority[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		curr += count;
+		authority[i].header = (DNSAnwserHeader*)curr;
+		curr += sizeof(DNSAnwserHeader);
+		if (ntohs(authority[i].header->type) == 1) {
+			authority[i].record = new unsigned char[4];
+			for (int j = 0; j < 4; j++) {
+				authority[i].record[j] = curr[j];
+			}
+			curr += 4;
+		}
+		else {
+			authority[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			curr += count;
+		}
+	}
 	//read additional
+	int nAdditional = ntohs(dh->nAdditional);
+	for (int i = 0; i < nAdditional; i++) {
+		additional[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		curr += count;
+		additional[i].header = (DNSAnwserHeader*)curr;
+		curr += sizeof(DNSAnwserHeader);
+		if (ntohs(additional[i].header->type) == 1) {
+			additional[i].record = new unsigned char[4];
+			for (int j = 0; j < 4; j++) {
+				additional[i].record[j] = curr[j];
+			}
+			curr += 4;
+		}
+		else {
+			additional[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			curr += count;
+		}
+
+	}
 
 	//output questions
 	printf("\t------------ [questions] ----------\n");
@@ -182,13 +219,25 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	for (int i = 0; i < ntohs(dh->nAnwsers); i++) {
 		if (ntohs(anwsers[i].header->type) == 1)
 			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record[0], anwsers[i].record[1], anwsers[i].record[2], anwsers[i].record[3], ntohl(anwsers[i].header->ttl));
-		else 
+		else
 			printf("\t\t%s %hu %s TTL = %hu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record, ntohl(anwsers[i].header->ttl));
 	}
 	//output authority
 	printf("\t------------ [authority] ----------\n");
+	for (int i = 0; i < ntohs(dh->nAuthority); i++) {
+		if(ntohs(authority[i].header->type) == 1)
+			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", authority[i].name, ntohs(authority[i].header->type), authority[i].record[0], authority[i].record[1], authority[i].record[2], authority[i].record[3], ntohl(authority[i].header->ttl));
+		else
+			printf("\t\t%s %hu %s TTL = %hu\n", authority[i].name, ntohs(authority[i].header->type), authority[i].record, ntohl(authority[i].header->ttl));
+	}
 	//output additional
 	printf("\t------------ [additional] ---------\n");
+	for (int i = 0; i < ntohs(dh->nAdditional); i++) {
+		if(ntohs(additional[i].header->type) == 1)
+			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", additional[i].name, ntohs(additional[i].header->type), additional[i].record[0], additional[i].record[1], additional[i].record[2], additional[i].record[3], ntohl(additional[i].header->ttl));
+		else
+			printf("\t\t%s %hu %s TTL = %hu\n", additional[i].name, ntohs(additional[i].header->type), additional[i].record, ntohl(additional[i].header->ttl));
+	}
 
 	// call cleanup when done with everything and ready to exit program
 	cleanAndExit(s);
@@ -200,7 +249,7 @@ void winsock::cleanAndExit(SOCKET s) {
 	WSACleanup();
 }
 
-unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count){
+unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count) {
 	//take a given string in format nameBuf = 3www6google3com0 in buf create and return a string of it correctly formatted + increment count
 	unsigned char* name = new unsigned char[256];
 	int namePos = 0;
@@ -221,7 +270,7 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 			//exit(-1);
 		}
 		else {
-		//not compressed
+			//not compressed
 			name[namePos] = *nameBuf;
 			namePos++;
 		}
@@ -231,7 +280,7 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 			*count = *count + 1;
 	}
 	//end string nullterminator
-	name[namePos] = '\0'; 
+	name[namePos] = '\0';
 	if (jump)
 		//4 bytes 16 bits need to move up in packet bc size of jump?
 		*count = *count + 1;
