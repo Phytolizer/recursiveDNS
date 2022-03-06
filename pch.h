@@ -10,7 +10,7 @@
 // add headers that you want to pre-compile here
 #include <iostream>
 #include <Windows.h>
-#include <string.h>
+#include <string>
 #include <process.h>
 
 #endif //PCH_H

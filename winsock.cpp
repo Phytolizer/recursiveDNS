@@ -125,16 +125,66 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//else succeeded with Rcode = 0
 	u_short Rcode = ntohs(dh->flags) & 0x0f;
 	if (Rcode == 0)
-		printf("\tsucceeded with Rcode = %d", Rcode);
+		printf("\tsucceeded with Rcode = %d\n", Rcode);
 	else {
-		printf("\tfailed with Rcode = %d", Rcode);
+		printf("\tfailed with Rcode = %d\n", Rcode);
 		cleanAndExit(s);
 		return cStringSpan();
 	}
+
+	//define some structs to hold the RR of all the data recieved
+	QR* questions = new QR[ntohs(dh->nQuestions)]{};
+	RR* anwsers = new RR[ntohs(dh->nAnwsers)]{};
+	RR* authority = new RR[ntohs(dh->nAuthority)]{};
+	RR* additional = new RR[ntohs(dh->nAdditional)]{};
+
+	//move curr pointer to beginning of questions section
+	char* curr = &response[sizeof(FixedDNSHeader)];
+	int count= 0;
+	//read questions
+	for (int i = 0; i < ntohs(dh->nQuestions); i++) {
+		questions[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		curr += count;
+		questions[i].header = (QueryHeader*)curr;
+		curr += sizeof(QueryHeader);
+	}
+	//read anwsers
+	int nAnwsers = ntohs(dh->nAnwsers);
+	for (int i = 0; i < nAnwsers; i++) {
+		anwsers[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		curr += count;
+		anwsers[i].header = (DNSAnwserHeader*)curr;
+		curr += sizeof(DNSAnwserHeader);
+		if (ntohs(anwsers->header->type) == 1) {//ip
+			//ipv4
+			//extract ip address here
+			anwsers[i].record = new unsigned char[4];
+			for (int j = 0; j < 4; j++) {
+				anwsers[i].record[j] = curr[j];
+			}
+			curr += 4;
+		}
+		else {
+			anwsers[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			curr += count;
+		}
+	}
+	//read authority
+	//read additional
+
 	//output questions
 	printf("\t------------ [questions] ----------\n");
+	for (int i = 0; i < ntohs(dh->nQuestions); i++) {
+		printf("\t\t%s type %hu class %hu\n", (char*)questions[i].name, ntohs(questions[i].header->type), ntohs(questions[i].header->qClass));
+	}
 	//output anwsers
 	printf("\t------------ [anwsers] ------------\n");
+	for (int i = 0; i < ntohs(dh->nAnwsers); i++) {
+		if (ntohs(anwsers[i].header->type) == 1)
+			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record[0], anwsers[i].record[1], anwsers[i].record[2], anwsers[i].record[3], ntohl(anwsers[i].header->ttl));
+		else 
+			printf("\t\t%s %hu %s TTL = %hu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record, ntohl(anwsers[i].header->ttl));
+	}
 	//output authority
 	printf("\t------------ [authority] ----------\n");
 	//output additional
@@ -148,6 +198,61 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 void winsock::cleanAndExit(SOCKET s) {
 	closesocket(s);
 	WSACleanup();
+}
+
+unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count){
+	//take a given string in format nameBuf = 3www6google3com0 in buf create and return a string of it correctly formatted + increment count
+	unsigned char* name = new unsigned char[256];
+	int namePos = 0;
+	bool jump = false;
+
+	*count = 1;
+	//read in the name from the buffer
+	//while not at end of string
+	while (*nameBuf != 0) {
+		//if next request is compressed
+		if (*nameBuf >= 0xc0) {
+			jump = true;
+			//black magic here
+			//extract offset (from slides?)
+			int offset = ((*nameBuf & 0x3f) << 8) + *(nameBuf + 1);
+			nameBuf = buf + offset - 1;
+			//printf("yo this thing has compression and im not implementing that right now\n");
+			//exit(-1);
+		}
+		else {
+		//not compressed
+			name[namePos] = *nameBuf;
+			namePos++;
+		}
+		//move pointer up 1 byte for char read
+		nameBuf += 1;
+		if (!jump)
+			*count = *count + 1;
+	}
+	//end string nullterminator
+	name[namePos] = '\0'; 
+	if (jump)
+		//4 bytes 16 bits need to move up in packet bc size of jump?
+		*count = *count + 1;
+
+	//change string from '3www6google3com0\0' to www.google.com\0
+	//start by looping through string
+	int nChars;
+	int i, j;
+	for (i = 0; i < strlen((const char*)name); i++) {
+		//set numchars to first value in string
+		nChars = name[i];
+		//move nchars characters down overtaking previous byteNum
+		for (j = 0; j < nChars; j++) {
+			name[i] = name[i + 1];
+			i++;
+		}
+		name[i] = '.';
+	}
+	//last char to nullptr
+	name[i - 1] = '\0';
+	return name;
 }
 
 void winsock::makeDNSQuestion(char* buf, cStringSpan host) {

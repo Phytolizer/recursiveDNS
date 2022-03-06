@@ -34,6 +34,17 @@ struct DNSAnwserHeader {
 	u_int ttl;
 	u_short len;
 };
+
+struct RR {
+	unsigned char* name;
+	DNSAnwserHeader* header;
+	unsigned char* record;
+};
+
+struct QR {
+	unsigned char* name;
+	QueryHeader* header;
+};
 #pragma pack(pop)
 
 struct winsock {
@@ -44,4 +55,5 @@ struct winsock {
 	cStringSpan readSock(SOCKET);
 	cStringSpan formatIP(cStringSpan);
 	void cleanAndExit(SOCKET);
+	unsigned char* parseName(unsigned char*, unsigned char*, int*);
 };
