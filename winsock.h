@@ -1,3 +1,4 @@
+// -*- mode: C++; -*-
 #pragma once
 #include "cStringSpan.h"
 #pragma comment(lib,"ws2_32.lib")

@@ -1,3 +1,4 @@
+// -*- mode: C++; -*-
 #pragma once
 
 struct cStringSpan {
