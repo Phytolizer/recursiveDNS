@@ -56,5 +56,5 @@ struct winsock {
 	cStringSpan readSock(SOCKET);
 	cStringSpan formatIP(cStringSpan);
 	void cleanAndExit(SOCKET);
-	unsigned char* parseName(unsigned char*, unsigned char*, int*);
+	unsigned char* parseName(unsigned char*, unsigned char*, int*, int);
 };

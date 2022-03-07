@@ -106,6 +106,11 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		cleanAndExit(s);
 		return cStringSpan();
 	}
+	if (bytesRecieved < sizeof(FixedDNSHeader)) {
+		printf("\t++ invalid reply: packet smaller than fixed DNS header\n");
+		cleanAndExit(s);
+		return cStringSpan();
+	}
 	printf("response in %d ms with %d bytes\n", end - begin, bytesRecieved);
 
 	////////////////////////////////////////////////////
@@ -143,7 +148,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	int count = 0;
 	//read questions
 	for (int i = 0; i < ntohs(dh->nQuestions); i++) {
-		questions[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		questions[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		questions[i].header = (QueryHeader*)curr;
 		curr += sizeof(QueryHeader);
@@ -151,7 +156,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//read anwsers
 	int nAnwsers = ntohs(dh->nAnwsers);
 	for (int i = 0; i < nAnwsers; i++) {
-		anwsers[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		anwsers[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		anwsers[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
@@ -165,14 +170,14 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 			curr += 4;
 		}
 		else {
-			anwsers[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			anwsers[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 			curr += count;
 		}
 	}
 	//read authority
 	int nAuthority = ntohs(dh->nAuthority);
 	for (int i = 0; i < nAuthority; i++) {
-		authority[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		authority[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		authority[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
@@ -184,14 +189,14 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 			curr += 4;
 		}
 		else {
-			authority[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			authority[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 			curr += count;
 		}
 	}
 	//read additional
 	int nAdditional = ntohs(dh->nAdditional);
 	for (int i = 0; i < nAdditional; i++) {
-		additional[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+		additional[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		additional[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
@@ -203,7 +208,7 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 			curr += 4;
 		}
 		else {
-			additional[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count);
+			additional[i].record = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 			curr += count;
 		}
 
@@ -249,11 +254,12 @@ void winsock::cleanAndExit(SOCKET s) {
 	WSACleanup();
 }
 
-unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count) {
+unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count, int responseSize) {
 	//take a given string in format nameBuf = 3www6google3com0 in buf create and return a string of it correctly formatted + increment count
 	unsigned char* name = new unsigned char[256];
 	int namePos = 0;
 	bool jump = false;
+	int nJumps = 0;
 
 	*count = 1;
 	//read in the name from the buffer
@@ -261,10 +267,27 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 	while (*nameBuf != 0) {
 		//if next request is compressed
 		if (*nameBuf >= 0xc0) {
+			nJumps++;
+			//if jumps more times than # bytes just exit
+			if (nJumps > MAX_DNS_SIZE) {
+				printf("\t++ invalid record: jump loop\n");
+				WSACleanup();
+				exit(-1);
+			}
 			jump = true;
 			//black magic here
 			//extract offset (from slides?)
 			int offset = ((*nameBuf & 0x3f) << 8) + *(nameBuf + 1);
+			if ((offset < 0) || (offset > responseSize)) {
+				printf("\t++ invalid record: jump beyond packet boundary\n");
+				WSACleanup();
+				exit(-1);
+			}
+			if (offset < sizeof(FixedDNSHeader)) {
+				printf("\t++ invalid record: jump into fixed DNS header\n");
+				WSACleanup();
+				exit(-1);
+			}
 			nameBuf = buf + offset - 1;
 			//printf("yo this thing has compression and im not implementing that right now\n");
 			//exit(-1);
