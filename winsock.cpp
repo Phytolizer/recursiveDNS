@@ -163,13 +163,18 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	int count = 0;
 	//read questions
 	for (int i = 0; i < ntohs(dh->nQuestions); i++) {
+		if ((curr - response) >= bytesRecieved) {
+			printf("\t++ invalid selection: not enough records\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		questions[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		questions[i].header = (QueryHeader*)curr;
 		curr += sizeof(QueryHeader);
 		//check for truncated DNSAnwserHeader
 		if ((curr - response) > bytesRecieved) {
-			printf("\t++ truncated RR anwser header\n");
+			printf("\t++ invalid record: truncated RR anwser header\n");
 			cleanAndExit(s);
 			exit(-1);
 		}
@@ -177,13 +182,18 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//read anwsers
 	int nAnwsers = ntohs(dh->nAnwsers);
 	for (int i = 0; i < nAnwsers; i++) {
+		if ((curr - response) >= bytesRecieved) {
+			printf("\t++ invalid selection: not enough records\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		anwsers[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		anwsers[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
 		//check for truncated DNSAnwserHeader
 		if ((curr - response) > bytesRecieved) {
-			printf("\t++ truncated RR anwser header\n");
+			printf("\t++ invalid record: truncated RR anwser header\n");
 			cleanAndExit(s);
 			exit(-1);
 		}
@@ -205,13 +215,18 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//read authority
 	int nAuthority = ntohs(dh->nAuthority);
 	for (int i = 0; i < nAuthority; i++) {
+		if ((curr - response) >= bytesRecieved) {
+			printf("\t++ invalid selection: not enough records\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		authority[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		authority[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
 		//check for truncated DNSAnwserHeader
 		if ((curr - response) > bytesRecieved) {
-			printf("\t++ truncated RR anwser header\n");
+			printf("\t++ invalid record: truncated RR anwser header\n");
 			cleanAndExit(s);
 			exit(-1);
 		}
@@ -230,13 +245,18 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	//read additional
 	int nAdditional = ntohs(dh->nAdditional);
 	for (int i = 0; i < nAdditional; i++) {
+		if ((curr - response) >= bytesRecieved) {
+			printf("\t++ invalid selection: not enough records\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		additional[i].name = parseName((unsigned char*)curr, (unsigned char*)response, &count, bytesRecieved);
 		curr += count;
 		additional[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
 		//check for truncated DNSAnwserHeader
 		if ((curr - response) > bytesRecieved) {
-			printf("\t++ truncated RR anwser header\n");
+			printf("\t++ invalid record: truncated RR anwser header\n");
 			cleanAndExit(s);
 			exit(-1);
 		}
@@ -263,25 +283,25 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 	printf("\t------------ [anwsers] ------------\n");
 	for (int i = 0; i < ntohs(dh->nAnwsers); i++) {
 		if (ntohs(anwsers[i].header->type) == 1)
-			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record[0], anwsers[i].record[1], anwsers[i].record[2], anwsers[i].record[3], ntohl(anwsers[i].header->ttl));
+			printf("\t\t%s %s %hhu.%hhu.%hhu.%hhu TTL = %lu\n", anwsers[i].name, typeToString(ntohs(anwsers[i].header->type)), anwsers[i].record[0], anwsers[i].record[1], anwsers[i].record[2], anwsers[i].record[3], ntohl(anwsers[i].header->ttl));
 		else
-			printf("\t\t%s %hu %s TTL = %hu\n", anwsers[i].name, ntohs(anwsers[i].header->type), anwsers[i].record, ntohl(anwsers[i].header->ttl));
+			printf("\t\t%s %s %s TTL = %hu\n", anwsers[i].name, typeToString(ntohs(anwsers[i].header->type)), anwsers[i].record, ntohl(anwsers[i].header->ttl));
 	}
 	//output authority
 	printf("\t------------ [authority] ----------\n");
 	for (int i = 0; i < ntohs(dh->nAuthority); i++) {
 		if(ntohs(authority[i].header->type) == 1)
-			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", authority[i].name, ntohs(authority[i].header->type), authority[i].record[0], authority[i].record[1], authority[i].record[2], authority[i].record[3], ntohl(authority[i].header->ttl));
+			printf("\t\t%s %s %hhu.%hhu.%hhu.%hhu TTL = %lu\n", authority[i].name, typeToString(ntohs(authority[i].header->type)), authority[i].record[0], authority[i].record[1], authority[i].record[2], authority[i].record[3], ntohl(authority[i].header->ttl));
 		else
-			printf("\t\t%s %hu %s TTL = %hu\n", authority[i].name, ntohs(authority[i].header->type), authority[i].record, ntohl(authority[i].header->ttl));
+			printf("\t\t%s %s %s TTL = %hu\n", authority[i].name, typeToString(ntohs(authority[i].header->type)), authority[i].record, ntohl(authority[i].header->ttl));
 	}
 	//output additional
 	printf("\t------------ [additional] ---------\n");
 	for (int i = 0; i < ntohs(dh->nAdditional); i++) {
 		if(ntohs(additional[i].header->type) == 1)
-			printf("\t\t%s %hu %hhu.%hhu.%hhu.%hhu TTL = %lu\n", additional[i].name, ntohs(additional[i].header->type), additional[i].record[0], additional[i].record[1], additional[i].record[2], additional[i].record[3], ntohl(additional[i].header->ttl));
+			printf("\t\t%s %s %hhu.%hhu.%hhu.%hhu TTL = %lu\n", additional[i].name, typeToString(ntohs(additional[i].header->type)), additional[i].record[0], additional[i].record[1], additional[i].record[2], additional[i].record[3], ntohl(additional[i].header->ttl));
 		else
-			printf("\t\t%s %hu %s TTL = %hu\n", additional[i].name, ntohs(additional[i].header->type), additional[i].record, ntohl(additional[i].header->ttl));
+			printf("\t\t%s %s %s TTL = %hu\n", additional[i].name, typeToString(ntohs(additional[i].header->type)), additional[i].record, ntohl(additional[i].header->ttl));
 	}
 
 	// call cleanup when done with everything and ready to exit program
@@ -292,6 +312,22 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 void winsock::cleanAndExit(SOCKET s) {
 	closesocket(s);
 	WSACleanup();
+}
+
+std::string winsock::typeToString(u_short type) {
+	switch (type) {
+		case DNS_A:
+			return "A";
+		case DNS_NS:
+			return "NS";
+		case DNS_CNAME:
+			return "CNAME";
+		case DNS_PTR:
+			return "PTR";
+		default:
+			return std::to_string(type);
+	}
+	
 }
 
 unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, int* count, int responseSize) {
