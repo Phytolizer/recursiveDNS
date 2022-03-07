@@ -175,7 +175,8 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		curr += count;
 		anwsers[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
-		if (ntohs(anwsers->header->type) == 1) {//ip
+		//printf("Header type: %hu class: %hu ttl: %du len: %hu\n", ntohs(anwsers[i].header->type), ntohs(anwsers[i].header->aClass), ntohs(anwsers[i].header->ttl), ntohs(anwsers[i].header->len));
+		if (ntohs(anwsers[i].header->type) == 1) {//ip
 			//ipv4
 			//extract ip address here
 			anwsers[i].record = new unsigned char[4];
@@ -291,7 +292,7 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 			}
 			jump = true;
 			//check for truncated after 0xc0
-			if ((nameBuf - buf) >= responseSize - 2) {
+			if ((nameBuf - buf) >= responseSize - 1) {
 				//printf("%d %d", nameBuf - buf, responseSize - 2);
 				printf("\t++ invalid record: truncated jump offset\n");
 				WSACleanup();
@@ -300,6 +301,7 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 			//black magic here
 			//extract offset (from slides?)
 			int offset = ((*nameBuf & 0x3f) << 8) + *(nameBuf + 1);
+			//printf("offset: %d", offset);
 			if ((offset < 0) || (offset > responseSize)) {
 				printf("\t++ invalid record: jump beyond packet boundary\n");
 				WSACleanup();
