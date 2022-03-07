@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "winsock.h"
-#include <vector>
 
 constexpr auto TIMEOUT_MS = 10000;
 
@@ -97,8 +96,14 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		bytesRecieved = recvfrom(s, response, MAX_DNS_SIZE, 0, (sockaddr*)&dest, &destlen);
 		end = clock();
 
-		if (bytesRecieved == -1)
-			printf("timeout in %d ms\n", end - begin);
+		if (bytesRecieved == -1) {
+			if ((end - begin) > 10000) {
+				printf("timeout in %d ms\n", end - begin);
+			}
+			else {
+				printf("socket error %d\n", WSAGetLastError());
+			}
+		}
 		else
 			break;
 	}
@@ -106,12 +111,14 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		cleanAndExit(s);
 		return cStringSpan();
 	}
+
+	printf("response in %d ms with %d bytes\n", end - begin, bytesRecieved);
+
 	if (bytesRecieved < sizeof(FixedDNSHeader)) {
 		printf("\t++ invalid reply: packet smaller than fixed DNS header\n");
 		cleanAndExit(s);
 		return cStringSpan();
 	}
-	printf("response in %d ms with %d bytes\n", end - begin, bytesRecieved);
 
 	////////////////////////////////////////////////////
 	//now parse the response by moving the header objects around onto the recieved buffer
@@ -133,6 +140,14 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		printf("\tsucceeded with Rcode = %d\n", Rcode);
 	else {
 		printf("\tfailed with Rcode = %d\n", Rcode);
+		cleanAndExit(s);
+		return cStringSpan();
+	}
+
+	//check for minsize by adding fixed header, q, a, auth, add to get min packet size 
+	u_int minPktSize = sizeof(FixedDNSHeader) + ntohs(dh->nQuestions) * sizeof(QueryHeader) + sizeof(DNSAnwserHeader) * (ntohs(dh->nAnwsers)+ntohs(dh->nAuthority)+ntohs(dh->nAdditional));
+	if (minPktSize > MAX_DNS_SIZE) {
+		printf("\t++ invalid record: RR value length stretches the anwser beyond packet\n");
 		cleanAndExit(s);
 		return cStringSpan();
 	}
@@ -275,6 +290,13 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 				exit(-1);
 			}
 			jump = true;
+			//check for truncated after 0xc0
+			if ((nameBuf - buf) >= responseSize - 2) {
+				//printf("%d %d", nameBuf - buf, responseSize - 2);
+				printf("\t++ invalid record: truncated jump offset\n");
+				WSACleanup();
+				exit(-1);
+			}
 			//black magic here
 			//extract offset (from slides?)
 			int offset = ((*nameBuf & 0x3f) << 8) + *(nameBuf + 1);
@@ -289,8 +311,6 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 				exit(-1);
 			}
 			nameBuf = buf + offset - 1;
-			//printf("yo this thing has compression and im not implementing that right now\n");
-			//exit(-1);
 		}
 		else {
 			//not compressed

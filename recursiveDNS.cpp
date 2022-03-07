@@ -42,19 +42,19 @@ int main(int argc, char** argv)
     /*
         REQUIRED:
         DONE++incorrect TXID
-        ++packet filled with garbage -> bad txid error?
-        ++multiple questions?
-        ++response larger than max dns
+        DONE++packet filled with garbage -> bad txid error?
+        DONE++multiple questions?
+        DONE++response larger than max dns
         REPORT:
         DONE++invalid reply : packet smaller than fixed DNS header
         ++ invalid section : not enough records(e.g., declared 5 answers but only 3 found)
         DONE++invalid record : jump beyond packet boundary
         ++ invalid record : truncated name(e.g., “6 goog” and the packet ends)
         ++invalid record : truncated RR answer header(i.e., don’t have the full 10 bytes)
-        ++invalid record : truncated jump offset(e.g., 0xC0 and the packet ends)
+        DONE++invalid record : truncated jump offset(e.g., 0xC0 and the packet ends)
         DONE++invalid record : jump into fixed DNS header
         DONE++ invalid record : jump loop
-        ++ invalid record : RR value length stretches the answer beyond packet
+        DONE++ invalid record : RR value length stretches the answer beyond packet
     */
 }
 

@@ -12,5 +12,7 @@
 #include <Windows.h>
 #include <string>
 #include <process.h>
+#include <time.h>
+#include <vector>
 
 #endif //PCH_H
