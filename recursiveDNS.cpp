@@ -47,10 +47,10 @@ int main(int argc, char** argv)
         DONE++response larger than max dns
         REPORT:
         DONE++invalid reply : packet smaller than fixed DNS header
-        ++ invalid section : not enough records(e.g., declared 5 answers but only 3 found)
+        ++invalid section : not enough records(e.g., declared 5 answers but only 3 found)
         DONE++invalid record : jump beyond packet boundary
-        ++ invalid record : truncated name(e.g., “6 goog” and the packet ends)
-        ++invalid record : truncated RR answer header(i.e., don’t have the full 10 bytes)
+        PROGRESS++invalid record : truncated name(e.g., “6 goog” and the packet ends)
+        PROGRESS++invalid record : truncated RR answer header(i.e., don’t have the full 10 bytes)
         DONE++invalid record : truncated jump offset(e.g., 0xC0 and the packet ends)
         DONE++invalid record : jump into fixed DNS header
         DONE++ invalid record : jump loop

@@ -167,6 +167,12 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		curr += count;
 		questions[i].header = (QueryHeader*)curr;
 		curr += sizeof(QueryHeader);
+		//check for truncated DNSAnwserHeader
+		if ((curr - response) > bytesRecieved) {
+			printf("\t++ truncated RR anwser header\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 	}
 	//read anwsers
 	int nAnwsers = ntohs(dh->nAnwsers);
@@ -175,6 +181,12 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		curr += count;
 		anwsers[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
+		//check for truncated DNSAnwserHeader
+		if ((curr - response) > bytesRecieved) {
+			printf("\t++ truncated RR anwser header\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		//printf("Header type: %hu class: %hu ttl: %du len: %hu\n", ntohs(anwsers[i].header->type), ntohs(anwsers[i].header->aClass), ntohs(anwsers[i].header->ttl), ntohs(anwsers[i].header->len));
 		if (ntohs(anwsers[i].header->type) == 1) {//ip
 			//ipv4
@@ -197,6 +209,12 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		curr += count;
 		authority[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
+		//check for truncated DNSAnwserHeader
+		if ((curr - response) > bytesRecieved) {
+			printf("\t++ truncated RR anwser header\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		if (ntohs(authority[i].header->type) == 1) {
 			authority[i].record = new unsigned char[4];
 			for (int j = 0; j < 4; j++) {
@@ -216,6 +234,12 @@ cStringSpan winsock::winsock_download(cStringSpan host, cStringSpan dnsaddr) {
 		curr += count;
 		additional[i].header = (DNSAnwserHeader*)curr;
 		curr += sizeof(DNSAnwserHeader);
+		//check for truncated DNSAnwserHeader
+		if ((curr - response) > bytesRecieved) {
+			printf("\t++ truncated RR anwser header\n");
+			cleanAndExit(s);
+			exit(-1);
+		}
 		if (ntohs(additional[i].header->type) == 1) {
 			additional[i].record = new unsigned char[4];
 			for (int j = 0; j < 4; j++) {
@@ -280,7 +304,7 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 	*count = 1;
 	//read in the name from the buffer
 	//while not at end of string
-	while (*nameBuf != 0) {
+	while ((*nameBuf != 0)&&((nameBuf-buf)<responseSize)) {
 		//if next request is compressed
 		if (*nameBuf >= 0xc0) {
 			nJumps++;
@@ -323,6 +347,11 @@ unsigned char* winsock::parseName(unsigned char* nameBuf, unsigned char* buf, in
 		nameBuf += 1;
 		if (!jump)
 			*count = *count + 1;
+	}
+	if ((nameBuf - buf) >= responseSize) {
+		printf("\t++ invalid record: truncated name\n");
+		WSACleanup();
+		exit(-1);
 	}
 	//end string nullterminator
 	name[namePos] = '\0';
