@@ -63,6 +63,6 @@ struct winsock {
     cStringSpan readSock(int);
     cStringSpan formatIP(cStringSpan);
     void cleanAndExit(int);
-    unsigned char* parseName(unsigned char*, unsigned char*, int*, int);
+    std::uint8_t* parseName(unsigned char*, unsigned char*, int*, int);
     std::string typeToString(std::uint16_t);
 };

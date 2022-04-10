@@ -349,7 +349,7 @@ std::string winsock::typeToString(u_short type) {
     }
 }
 
-unsigned char* winsock::parseName(
+std::uint8_t* winsock::parseName(
         unsigned char* nameBuf, unsigned char* buf, int* count, int responseSize) {
     // take a given string in format nameBuf = 3www6google3com0 in buf create and return a string of
     // it correctly formatted + increment count
